@@ -10,7 +10,7 @@ def encode(model: Small_LLM_Model, text: str) -> list[int]:
     """Convert text into token IDs."""
 
     tokens = model.encode(text)
-    return [int(token) for token in np.asarray(tokens).reshape(-1)]
+    return tokens.tolist()[0]
 
 
 def decode_ids(model: Small_LLM_Model, ids: list[int]) -> str:
@@ -30,19 +30,14 @@ def next_logits(model: Small_LLM_Model, input_ids: list[int]) -> np.ndarray:
 def masked_argmax(logits: np.ndarray, valid_ids: set[int]) -> int:
     """Return the best token among the allowed tokens."""
 
-    best_id = -1
-    best_score = -np.inf
+    mask = np.full(logits.shape, -np.inf)
+    ids = [token_id for token_id in valid_ids if 0 <= token_id < len(logits)]
 
-    for token_id in valid_ids:
-        if 0 <= token_id < len(logits):
-            if logits[token_id] > best_score:
-                best_score = logits[token_id]
-                best_id = token_id
-
-    if best_id == -1:
+    if not ids:
         raise RuntimeError("no valid token was found")
 
-    return best_id
+    mask[ids] = logits[ids]
+    return int(np.argmax(mask))
 
 
 def select_function(model: Small_LLM_Model, prompt: str,
